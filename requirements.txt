@@ -1,0 +1,30 @@
+# =============================================
+# Phase 1 — RAG Core
+# =============================================
+
+# LangGraph — agentic workflow orchestration
+langgraph>=0.2.0
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-groq>=0.2.0
+
+# Qdrant — vector database client
+qdrant-client>=1.9.0
+
+# Embeddings — local HuggingFace models
+sentence-transformers>=3.0.0
+
+# Reranker — improves retrieval quality
+flashrank>=0.2.0
+
+# LLM Gateway — Portkey wraps Groq with fallback
+portkey-ai>=1.6.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Data validation
+pydantic>=2.0.0
+
+# Utilities
+numpy>=1.24.0

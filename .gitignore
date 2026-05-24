@@ -1,0 +1,60 @@
+# =============================================
+# Virtual Environment — never commit this
+# =============================================
+venv/
+.venv/
+env/
+
+# =============================================
+# Python artifacts
+# =============================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# =============================================
+# SECRETS — NEVER EVER COMMIT THESE
+# =============================================
+.env
+*.key
+*.pem
+secrets.json
+
+# =============================================
+# VS Code personal settings
+# =============================================
+.vscode/
+
+# =============================================
+# Terraform (contains sensitive state)
+# =============================================
+terraform/.terraform/
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/.terraform.lock.hcl
+
+# =============================================
+# OS generated files
+# =============================================
+.DS_Store          # Mac
+Thumbs.db          # Windows
+Desktop.ini
+
+# =============================================
+# Jupyter Notebooks checkpoints
+# =============================================
+.ipynb_checkpoints/
+
+# =============================================
+# Logs
+# =============================================
+*.log
+logs/
