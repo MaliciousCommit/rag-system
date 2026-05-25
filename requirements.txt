@@ -28,3 +28,21 @@ pydantic>=2.0.0
 
 # Utilities
 numpy>=1.24.0
+# Document loaders
+pypdf>=4.0.0                    # PDF parsing
+python-docx>=1.1.0              # DOCX parsing
+python-pptx>=0.6.23             # PPTX parsing
+beautifulsoup4>=4.12.0          # HTML parsing
+lxml>=5.0.0                     # HTML parser backend
+
+# Text chunking
+langchain-text-splitters>=0.3.0
+
+# Google Cloud Storage
+google-cloud-storage>=2.16.0
+
+# Google Document AI (OCR)
+google-cloud-documentai>=2.20.0
+
+# File type detection
+python-magic-bin>=0.4.14        # Windows

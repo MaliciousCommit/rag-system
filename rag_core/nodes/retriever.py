@@ -26,6 +26,7 @@ WHY TWO STAGES?
 """
 
 import os
+import tempfile
 import logging
 from typing import List
 from dotenv import load_dotenv
@@ -84,7 +85,8 @@ def get_reranker() -> Ranker:
         # ms-marco-MiniLM-L-12-v2 is the best balance of speed vs accuracy
         # It's a cross-encoder trained on Microsoft's MARCO passage ranking dataset
         _reranker = Ranker(
-            model_name="ms-marco-MiniLM-L-12-v2", cache_dir="/tmp/flashrank"
+            model_name="ms-marco-MiniLM-L-12-v2",
+            cache_dir=os.path.join(tempfile.gettempdir(), "flashrank"),
         )
         logger.info("[Retriever] Reranker loaded ✅")
     return _reranker
@@ -226,7 +228,11 @@ def retriever_node(state: GraphState) -> dict:
         }
 
     # STAGE 2: Rerank candidates with FlashRank
-    reranked_docs = rerank_documents(query, retrieved_docs, top_n=5)
+    try:
+        reranked_docs = rerank_documents(query, retrieved_docs, top_n=5)
+    except Exception as e:
+        logger.error(f"[Retriever] Reranking failed, falling back to vector results: {e}")
+        reranked_docs = retrieved_docs[:5]
 
     return {
         "retrieved_docs": retrieved_docs,
