@@ -26,13 +26,11 @@ WHY TWO STAGES?
 """
 
 import os
-import tempfile
 import logging
 from typing import List
 from dotenv import load_dotenv
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Filter
 from sentence_transformers import SentenceTransformer
 from flashrank import Ranker, RerankRequest
 
@@ -85,8 +83,7 @@ def get_reranker() -> Ranker:
         # ms-marco-MiniLM-L-12-v2 is the best balance of speed vs accuracy
         # It's a cross-encoder trained on Microsoft's MARCO passage ranking dataset
         _reranker = Ranker(
-            model_name="ms-marco-MiniLM-L-12-v2",
-            cache_dir=os.path.join(tempfile.gettempdir(), "flashrank"),
+            model_name="ms-marco-MiniLM-L-12-v2", cache_dir="/tmp/flashrank"
         )
         logger.info("[Retriever] Reranker loaded ✅")
     return _reranker
@@ -130,7 +127,7 @@ def vector_search(query_vector: List[float], top_k: int = 20) -> List[dict]:
             query=query_vector,
             limit=top_k,
             with_payload=True,
-            score_threshold=0.3,
+            score_threshold=0.2,
         )
 
         docs = []
@@ -155,7 +152,7 @@ def vector_search(query_vector: List[float], top_k: int = 20) -> List[dict]:
         return []
 
 
-def rerank_documents(query: str, docs: List[dict], top_n: int = 5) -> List[dict]:
+def rerank_documents(query: str, docs: List[dict], top_n: int = 8) -> List[dict]:
     """
     Stage 2: Rerank documents using FlashRank cross-encoder.
 
@@ -167,9 +164,9 @@ def rerank_documents(query: str, docs: List[dict], top_n: int = 5) -> List[dict]
     Returns:
         Top-N most relevant documents, reordered by cross-encoder score
 
-    WHY top_n=5?
+    WHY top_n=8?
         The Responder's context window isn't infinite.
-        5 high-quality chunks give enough context without overwhelming the LLM.
+        8 high-quality chunks give enough context without overwhelming the LLM.
         More isn't always better — too many chunks = confused LLM.
     """
     if not docs:
@@ -228,11 +225,7 @@ def retriever_node(state: GraphState) -> dict:
         }
 
     # STAGE 2: Rerank candidates with FlashRank
-    try:
-        reranked_docs = rerank_documents(query, retrieved_docs, top_n=5)
-    except Exception as e:
-        logger.error(f"[Retriever] Reranking failed, falling back to vector results: {e}")
-        reranked_docs = retrieved_docs[:5]
+    reranked_docs = rerank_documents(query, retrieved_docs, top_n=8)
 
     return {
         "retrieved_docs": retrieved_docs,

@@ -52,6 +52,7 @@ def get_qdrant_client() -> QdrantClient:
         _qdrant_client = QdrantClient(
             url=os.getenv("QDRANT_URL"),
             api_key=os.getenv("QDRANT_API_KEY"),
+            timeout=180,
         )
     return _qdrant_client
 

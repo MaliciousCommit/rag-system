@@ -43,7 +43,7 @@ def get_llm() -> ChatGroq:
     return ChatGroq(
         model="llama-3.3-70b-versatile",
         temperature=0.1,
-        max_tokens=1024,
+        max_tokens=2048,
     )
 
 

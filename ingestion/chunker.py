@@ -37,8 +37,8 @@ logger = logging.getLogger(__name__)
 
 def chunk_documents(
     documents: List[Document],
-    chunk_size: int = 512,
-    chunk_overlap: int = 100,
+    chunk_size: int = 1024,
+    chunk_overlap: int = 200,
 ) -> List[dict]:
     """
     Split a list of Documents into smaller overlapping chunks.
