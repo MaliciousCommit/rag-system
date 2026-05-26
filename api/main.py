@@ -28,6 +28,8 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+from observability.langsmith_config import setup_langsmith
+from observability.logfire_config import setup_logfire, create_span
 
 from api.schemas import (
     QueryRequest,
@@ -68,14 +70,20 @@ session_store: dict[str, list] = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Runs once at startup — pre-loads heavy resources.
-    WHY: First request would be slow if we load models then.
-         Pre-loading makes first request as fast as all others.
-    """
+    """Startup — pre-load resources and configure observability."""
     logger.info("=" * 55)
     logger.info("🚀 RAG System API starting up...")
 
+    # ── Observability Setup ───────────────────────────────────────────────────
+    langsmith_ok = setup_langsmith()
+    logfire_ok = setup_logfire(app)  # pass app for FastAPI instrumentation
+
+    logger.info(
+        f"[Observability] LangSmith: {'✅' if langsmith_ok else '⚠️ disabled'} | "
+        f"Logfire: {'✅' if logfire_ok else '⚠️ disabled'}"
+    )
+
+    # ── Pre-load Models ───────────────────────────────────────────────────────
     try:
         from rag_core.nodes.retriever import get_embedding_model, get_qdrant_client
 
@@ -84,14 +92,14 @@ async def lifespan(app: FastAPI):
         get_qdrant_client()
         logger.info("✅ Qdrant client pre-loaded")
     except Exception as e:
-        logger.warning(f"⚠️  Pre-load failed (loads on first request): {e}")
+        logger.warning(f"⚠️  Pre-load failed: {e}")
 
     logger.info("✅ API ready — visit http://localhost:8000/docs")
     logger.info("=" * 55)
 
-    yield  # Server runs here
+    yield
 
-    logger.info("🛑 RAG System API shutting down...")
+    logger.info("🛑 Shutting down...")
 
 
 # ─── App Instance ─────────────────────────────────────────────────────────────
@@ -170,20 +178,22 @@ async def health_check():
 @app.post("/query", response_model=QueryResponse, tags=["RAG"])
 async def query_endpoint(request: QueryRequest):
     """
-    Main RAG query endpoint.
+    Main RAG query endpoint with full observability.
 
-    Full pipeline:
-        1. Guardrails check
+    Flow:
+        1. Guardrails check     ← Logfire span
         2. Load session history
-        3. Run LangGraph agent
-        4. Save to session
-        5. Return structured response
+        3. Run LangGraph agent  ← Logfire span
+        4. Save session
+        5. Return response
     """
     start_time = time.time()
     logger.info(f"[API] /query → '{request.query[:60]}'")
 
-    # ── Step 1: Safety Check ──────────────────────────────────────────────────
-    is_safe, reason = check_input_safety(request.query)
+    # ── Step 1: Guardrails Check ──────────────────────────────────────────────
+    with create_span("guardrails_check", {"query": request.query[:50]}):
+        is_safe, reason = check_input_safety(request.query)
+
     if not is_safe:
         logger.warning(f"[API] Guardrail triggered: {reason}")
         return QueryResponse(
@@ -202,10 +212,11 @@ async def query_endpoint(request: QueryRequest):
 
     # ── Step 3: Run LangGraph Agent ───────────────────────────────────────────
     try:
-        result = run_query(
-            query=request.query,
-            chat_history=chat_history,
-        )
+        with create_span("langgraph_agent", {"session_id": session_id}):
+            result = run_query(
+                query=request.query,
+                chat_history=chat_history,
+            )
     except Exception as e:
         logger.error(f"[API] Agent error: {e}")
         raise HTTPException(status_code=500, detail=f"Agent error: {str(e)}")
