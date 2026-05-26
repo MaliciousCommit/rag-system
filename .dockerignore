@@ -1,0 +1,43 @@
+# .dockerignore
+
+# Virtual environment — NEVER include
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Secrets — NEVER include
+.env
+
+# Git
+.git/
+.gitignore
+
+# VS Code
+.vscode/
+
+# Local documents
+my_documents/
+temp_uploads/
+
+# Terraform
+terraform/
+
+# Test files
+tests/
+
+# Evaluation results
+evaluation/results_*.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
