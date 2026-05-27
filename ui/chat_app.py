@@ -284,26 +284,36 @@ with st.sidebar:
         help="Upload a document to add to your knowledge base",
     )
 
-    if uploaded_file is not None:
-        # Save uploaded file temporarily
-        save_dir = Path("temp_uploads")
-        save_dir.mkdir(exist_ok=True)
-        save_path = save_dir / uploaded_file.name
+    # FIND THIS SECTION in chat_app.py and REPLACE IT
 
-        with open(save_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
+if uploaded_file is not None:
+    save_dir = Path("temp_uploads")
+    save_dir.mkdir(exist_ok=True)
+    save_path = save_dir / uploaded_file.name
 
-        if st.button("⚡ Ingest Document", use_container_width=True):
-            with st.spinner(f"Ingesting {uploaded_file.name}..."):
-                result = ingest_document(str(save_path))
+    with open(save_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
 
-            if "error" in result:
-                st.error(f"❌ {result['error']}")
-            else:
-                st.success("✅ Ingestion started!")
-                st.caption(result.get("message", ""))
-                if uploaded_file.name not in st.session_state.ingested_files:
-                    st.session_state.ingested_files.append(uploaded_file.name)
+    if st.button("⚡ Ingest Document", use_container_width=True):
+        with st.spinner(f"Ingesting {uploaded_file.name}..."):
+            try:
+                # ✅ Call ingestion pipeline DIRECTLY
+                # Don't go through FastAPI — separate containers
+                # have separate filesystems on Railway
+                from ingestion.pipeline import ingest_file
+
+                result = ingest_file(str(save_path))
+
+                if result.get("status") == "success":
+                    chunks = result.get("chunks_uploaded", 0)
+                    st.success(f"✅ Ingested {chunks} chunks!")
+                    if uploaded_file.name not in st.session_state.ingested_files:
+                        st.session_state.ingested_files.append(uploaded_file.name)
+                else:
+                    st.error(f"❌ {result.get('error', 'Ingestion failed')}")
+
+            except Exception as e:
+                st.error(f"❌ Error: {str(e)}")
 
     # Show ingested files
     if st.session_state.ingested_files:
