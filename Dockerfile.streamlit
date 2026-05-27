@@ -1,11 +1,12 @@
-# Dockerfile.streamlit
-# Streamlit Chat UI — Production Container
+# Dockerfile.streamlit — Streamlit Chat UI
 
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
+ENV TOKENIZERS_PARALLELISM=false
+ENV OMP_NUM_THREADS=1
 
 WORKDIR /app
 
@@ -23,13 +24,9 @@ COPY . .
 
 EXPOSE 8501
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
-# ── Streamlit Config ──────────────────────────────────────────────────────────
-# headless=true   → no browser auto-open in container
-# enableCORS=false → Railway handles CORS
-# port=8501       → match EXPOSE above
 CMD ["streamlit", "run", "ui/chat_app.py", \
     "--server.port=8501", \
     "--server.address=0.0.0.0", \
