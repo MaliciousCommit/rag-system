@@ -27,6 +27,7 @@ from contextlib import asynccontextmanager
 # from typing import Optional
 import uvicorn
 from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from observability.langsmith_config import setup_langsmith
 from observability.logfire_config import setup_logfire, create_span
@@ -34,7 +35,6 @@ from observability.logfire_config import setup_logfire, create_span
 from api.schemas import (
     QueryRequest,
     QueryResponse,
-    IngestRequest,
     IngestResponse,
     HealthResponse,
     SourceDocument,
@@ -246,40 +246,46 @@ async def query_endpoint(request: QueryRequest):
     )
 
 
+# api/main.py — replace entire /ingest endpoint
+
+
 @app.post("/ingest", response_model=IngestResponse, tags=["Ingestion"])
 async def ingest_endpoint(
-    request: IngestRequest,
     background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
 ):
     """
-    Trigger document ingestion in the background.
-
-    WHY background_tasks?
-        1000-page PDF takes minutes to ingest.
-        Running synchronously = HTTP timeout.
-        BackgroundTasks: API returns instantly,
-        ingestion continues in background.
-        Check server logs to see progress.
+    Accept file upload and ingest in background.
+    Receives file bytes from Streamlit → saves → ingests.
     """
-    if not os.path.exists(request.file_path):
-        raise HTTPException(
-            status_code=404, detail=f"File not found: {request.file_path}"
-        )
+    import shutil
+    from pathlib import Path
 
-    background_tasks.add_task(
-        ingest_file,
-        request.file_path,
-        request.upload_to_gcs,
-    )
+    # Validate file
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
 
-    filename = os.path.basename(request.file_path)
-    logger.info(f"[API] Ingestion started in background: {filename}")
+    # Save to temp folder
+    temp_dir = Path("temp_uploads")
+    temp_dir.mkdir(exist_ok=True)
+    temp_path = temp_dir / file.filename
+
+    try:
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+        logger.info(f"[API] File saved: {file.filename}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"File save failed: {e}")
+
+    # Run ingestion in background
+    background_tasks.add_task(ingest_file, str(temp_path))
+    logger.info(f"[API] Ingestion started: {file.filename}")
 
     return IngestResponse(
         status="started",
-        file=filename,
+        file=file.filename,
         chunks_uploaded=0,
-        message=f"Ingestion started for '{filename}'. Check server logs for progress.",
+        message=f"Ingesting '{file.filename}'. Check logs for progress.",
     )
 
 
