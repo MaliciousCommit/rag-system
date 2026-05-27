@@ -1,4 +1,4 @@
-# Dockerfile.streamlit — Streamlit Chat UI
+# Dockerfile.streamlit — Lightweight UI Container
 
 FROM python:3.13-slim
 
@@ -11,20 +11,20 @@ ENV OMP_NUM_THREADS=1
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    gcc \
-    g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
+# ✅ No gcc/g++ needed — no C++ packages
 
-COPY requirements.txt .
+# ✅ Use minimal requirements — NOT full requirements.txt
+COPY requirements.streamlit.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.streamlit.txt
 
 COPY . .
 
 EXPOSE 8501
 
-HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:8501/_stcore/health || exit 1
 
 CMD ["streamlit", "run", "ui/chat_app.py", \
@@ -32,4 +32,5 @@ CMD ["streamlit", "run", "ui/chat_app.py", \
     "--server.address=0.0.0.0", \
     "--server.headless=true", \
     "--server.enableCORS=false", \
-    "--server.enableXsrfProtection=false"]
+    "--server.enableXsrfProtection=false", \
+    "--server.maxUploadSize=200"]

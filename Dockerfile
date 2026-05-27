@@ -1,4 +1,4 @@
-# Dockerfile — FastAPI RAG System
+# Dockerfile — FastAPI
 
 FROM python:3.13-slim
 
@@ -15,6 +15,10 @@ RUN apt-get update && apt-get install -y \
     g++ \
     curl \
     && rm -rf /var/lib/apt/lists/*
+
+# ✅ Install CPU-only torch FIRST before other packages
+# GPU torch = 2GB, CPU torch = 200MB
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \

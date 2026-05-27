@@ -70,31 +70,22 @@ session_store: dict[str, list] = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup — pre-load resources and configure observability."""
     logger.info("=" * 55)
     logger.info("🚀 RAG System API starting up...")
 
-    # ── Observability Setup ───────────────────────────────────────────────────
+    # ✅ NO pre-loading — saves RAM at startup
+    # Models load lazily on first request
+    # Railway free tier can't afford startup loading
+
     langsmith_ok = setup_langsmith()
-    logfire_ok = setup_logfire(app)  # pass app for FastAPI instrumentation
+    logfire_ok = setup_logfire(app)
 
     logger.info(
         f"[Observability] LangSmith: {'✅' if langsmith_ok else '⚠️ disabled'} | "
         f"Logfire: {'✅' if logfire_ok else '⚠️ disabled'}"
     )
 
-    # ── Pre-load Models ───────────────────────────────────────────────────────
-    try:
-        from rag_core.nodes.retriever import get_embedding_model, get_qdrant_client
-
-        get_embedding_model()
-        logger.info("✅ Embedding model pre-loaded")
-        get_qdrant_client()
-        logger.info("✅ Qdrant client pre-loaded")
-    except Exception as e:
-        logger.warning(f"⚠️  Pre-load failed: {e}")
-
-    logger.info("✅ API ready — visit http://localhost:8000/docs")
+    logger.info("✅ API ready — visit /docs")
     logger.info("=" * 55)
 
     yield
